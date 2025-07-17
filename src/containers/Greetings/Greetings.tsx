@@ -1,12 +1,16 @@
-import React, { Component } from 'react';
+import { Component } from 'react';
 import icon from '../../assets/img/icon-128.png';
 
-class GreetingComponent extends Component {
-  state = {
+interface State {
+  name: string;
+}
+
+class GreetingComponent extends Component<{}, State> {
+  override state: State = {
     name: 'dev',
   };
 
-  render() {
+  override render() {
     return (
       <div>
         <p>Hello, {this.state.name}!</p>
@@ -16,4 +20,4 @@ class GreetingComponent extends Component {
   }
 }
 
-export default GreetingComponent;
+export default GreetingComponent; 
