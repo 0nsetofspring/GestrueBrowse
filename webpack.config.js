@@ -47,9 +47,7 @@ var options = {
     devtools: path.join(__dirname, 'src', 'pages', 'Devtools', 'index.ts'),
     panel: path.join(__dirname, 'src', 'pages', 'Panel', 'index.tsx'),
   },
-  chromeExtensionBoilerplate: {
-    notHotReload: ['background', 'contentScript', 'devtools'],
-  },
+  // chromeExtensionBoilerplate 설정은 개발 서버에서만 사용
   output: {
     filename: '[name].bundle.js',
     path: path.resolve(__dirname, 'build'),
@@ -99,9 +97,12 @@ var options = {
             loader: require.resolve('ts-loader'),
             options: {
               getCustomTransformers: () => ({
-                before: [isDevelopment && ReactRefreshTypeScript()].filter(
-                  Boolean
-                ),
+                before: [
+                  // contentScript와 background는 HMR을 사용하지 않음
+                  isDevelopment &&
+                  !['contentScript', 'background'].includes(process.env.npm_lifecycle_event) &&
+                  ReactRefreshTypeScript()
+                ].filter(Boolean),
               }),
               transpileOnly: isDevelopment,
             },
@@ -134,11 +135,16 @@ var options = {
       .concat(['.js', '.jsx', '.ts', '.tsx', '.css']),
   },
   plugins: [
-    isDevelopment && new ReactRefreshWebpackPlugin(),
+    // contentScript와 background에는 React Refresh 플러그인을 적용하지 않음
+    isDevelopment && new ReactRefreshWebpackPlugin({
+      exclude: [/contentScript/, /background/],
+    }),
     new CleanWebpackPlugin({ verbose: false }),
     new webpack.ProgressPlugin(),
     // expose and write the allowed env vars on the compiled bundle
-    new webpack.EnvironmentPlugin(['NODE_ENV']),
+    new webpack.EnvironmentPlugin({
+      NODE_ENV: process.env.NODE_ENV || 'production'
+    }),
     new CopyWebpackPlugin({
       patterns: [
         {
@@ -210,8 +216,30 @@ var options = {
   },
 };
 
+// contentScript와 background에 대해서는 development 모드에서도 production과 동일하게 처리
 if (env.NODE_ENV === 'development') {
   options.devtool = 'cheap-module-source-map';
+
+  // contentScript와 background는 HMR을 사용하지 않으므로 production과 동일하게 최적화
+  options.optimization = {
+    minimize: false, // 개발 중에는 minify하지 않음
+    splitChunks: {
+      cacheGroups: {
+        contentScript: {
+          test: /contentScript/,
+          name: 'contentScript',
+          chunks: 'all',
+          enforce: true,
+        },
+        background: {
+          test: /background/,
+          name: 'background',
+          chunks: 'all',
+          enforce: true,
+        },
+      },
+    },
+  };
 } else {
   options.optimization = {
     minimize: true,

@@ -9,7 +9,10 @@ var webpack = require('webpack'),
   config = require('../webpack.config'),
   ZipPlugin = require('zip-webpack-plugin');
 
-delete config.chromeExtensionBoilerplate;
+// chromeExtensionBoilerplate 속성이 있으면 삭제
+if (config.chromeExtensionBoilerplate) {
+  delete config.chromeExtensionBoilerplate;
+}
 
 config.mode = 'production';
 
@@ -22,6 +25,24 @@ config.plugins = (config.plugins || []).concat(
   })
 );
 
-webpack(config, function (err) {
-  if (err) throw err;
+webpack(config, function (err, stats) {
+  if (err) {
+    console.error('Webpack build error:', err);
+    throw err;
+  }
+
+  if (stats.hasErrors()) {
+    console.error('Webpack build failed with errors:', stats.toString({
+      colors: true,
+      errorDetails: true
+    }));
+    process.exit(1);
+  }
+
+  console.log('Build completed successfully!');
+  console.log('Build stats:', stats.toString({
+    colors: true,
+    chunks: false,
+    modules: false
+  }));
 });

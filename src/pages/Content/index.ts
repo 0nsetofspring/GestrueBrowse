@@ -1,33 +1,20 @@
-// src/pages/Content/index.js
-// 스크롤 등 탭 내 동작
+chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
+  console.log("Content script received message:", request);
 
-console.log("Content script injected!");
+  // 위로 스크롤
+  if (request.action === "scroll-up") {
+    window.scrollBy({ top: -window.innerHeight / 2, behavior: 'smooth' }); // 화면 높이의 절반만큼 위로
+    console.log("스크롤: 위로");
+    sendResponse({ status: "success", direction: "up" });
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.action === "scroll") {
-        if (message.direction === "up") {
-            window.scrollBy(0, -200);
-        } else if (message.direction === "down") {
-            window.scrollBy(0, 200);
-        }
-    }
+  } else if (request.action === "scroll-down") {
+    window.scrollBy({ top: window.innerHeight / 2, behavior: 'smooth' }); // 화면 높이의 절반만큼 아래로
+    console.log("스크롤: 아래로");
+    sendResponse({ status: "success", direction: "down" });
+  } else{
+    console.log("알 수 없는 제스처:", request.action);
+  }
+  return true; // 비동기 응답을 위해 필요
 });
 
-// --- 제스처 시뮬레이션을 위한 코드 추가 (개발/테스트용) ---
-// 이 함수는 배포 시 제거하거나, 특정 조건에서만 활성화되도록 해야 합니다.
-declare global {
-    interface Window {
-        simulateGesture: (gesture: string) => void;
-    }
-}
-
-window.simulateGesture = (gesture: string) => {
-    console.log(`Simulating gesture: ${gesture}`);
-    chrome.runtime.sendMessage({ action: "gestureRecognized", gesture: gesture })
-        .catch(error => {
-            // 서비스 워커가 비활성화되어 있거나 연결이 끊어졌을 경우 오류 처리
-            console.warn("Failed to send simulated gesture message to background:", error);
-        });
-};
-
-export { };
+console.log("Content script loaded.");
