@@ -77,6 +77,23 @@ const Popup: React.FC = () => {
               Scroll Down
             </button>
           </div>
+
+          <div style={{ marginTop: '15px', textAlign: 'center' }}>
+            <button
+              onClick={() => chrome.runtime.openOptionsPage()}
+              style={{
+                padding: '8px 16px',
+                fontSize: '12px',
+                cursor: 'pointer',
+                backgroundColor: '#666',
+                color: 'white',
+                border: 'none',
+                borderRadius: '3px'
+              }}
+            >
+              설정
+            </button>
+          </div>
         </div>
       </header>
     </div>
