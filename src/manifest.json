@@ -4,7 +4,8 @@
   "description": "A chrome hand tracking extension built with React 17, Webpack 5, and Webpack Dev Server 4",
   "options_page": "options.html",
   "background": {
-    "service_worker": "background.bundle.js"
+    "service_worker": "background.bundle.js",
+    "persistent": false
   },
   "action": {
     "default_popup": "popup.html",
@@ -22,6 +23,36 @@
     "activeTab",
     "storage"
   ],
+  "commands": {
+    "scroll-up": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Up",
+        "mac": "Command+Shift+Up"
+      },
+      "description": "Scroll up"
+    },
+    "scroll-down": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Down",
+        "mac": "Command+Shift+Down"
+      },
+      "description": "Scroll down"
+    },
+    "tab-left": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Left",
+        "mac": "Command+Shift+Left"
+      },
+      "description": "Previous tab"
+    },
+    "tab-right": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Right",
+        "mac": "Command+Shift+Right"
+      },
+      "description": "Next tab"
+    }
+  },
   "host_permissions": [
     "http://*/*",
     "https://*/*",

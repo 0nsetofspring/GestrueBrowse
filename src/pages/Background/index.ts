@@ -152,4 +152,65 @@ chrome.tabs.onRemoved.addListener((tabId) => {
     }
 });
 
+// 탭 활성화 이벤트 리스너 추가 (Extension 상태 유지)
+chrome.tabs.onActivated.addListener((activeInfo) => {
+    console.log("탭 활성화됨:", activeInfo.tabId);
+    
+    // 활성화된 탭의 정보 가져오기
+    chrome.tabs.get(activeInfo.tabId, (tab) => {
+        if (chrome.runtime.lastError) {
+            console.error("탭 정보 가져오기 실패:", chrome.runtime.lastError.message);
+            return;
+        }
+        
+        // 일반 웹사이트인 경우에만 Content script 자동 주입
+        if (tab.url && !tab.url.startsWith('chrome://') && !tab.url.startsWith('chrome-extension://')) {
+            console.log("활성화된 탭에 Content script 자동 주입 시도:", tab.url);
+            
+            // 이미 주입되어 있지 않은 경우에만 주입
+            if (!injectedTabs.has(activeInfo.tabId)) {
+                chrome.scripting.executeScript({
+                    target: { tabId: activeInfo.tabId },
+                    files: ['contentScript.bundle.js']
+                }).then((result) => {
+                    console.log("탭 활성화 시 Content script 자동 주입 성공:", result);
+                    injectedTabs.set(activeInfo.tabId, true);
+                }).catch((error) => {
+                    console.log("탭 활성화 시 Content script 자동 주입 실패:", error);
+                });
+            } else {
+                console.log("이미 Content script가 주입된 탭");
+            }
+        }
+    });
+});
+
+// Extension 설치/업데이트 시 초기화
+chrome.runtime.onInstalled.addListener(() => {
+    console.log("Extension 설치/업데이트됨");
+    injectedTabs.clear(); // 주입 상태 초기화
+});
+
+// 키보드 단축키 처리
+chrome.commands.onCommand.addListener((command) => {
+    console.log("키보드 단축키 실행:", command);
+    
+    switch (command) {
+        case "scroll-up":
+            handleGestureAction("scroll-up");
+            break;
+        case "scroll-down":
+            handleGestureAction("scroll-down");
+            break;
+        case "tab-left":
+            handleGestureAction("left");
+            break;
+        case "tab-right":
+            handleGestureAction("right");
+            break;
+        default:
+            console.log("알 수 없는 명령:", command);
+    }
+});
+
 console.log("Background script loaded successfully");
