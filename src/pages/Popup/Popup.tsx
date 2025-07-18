@@ -24,10 +24,10 @@ const Popup: React.FC = () => {
     try {
       console.log('TensorFlow.js 초기화 시작...');
 
-      // 처리용 캔버스 생성
+      // 처리용 캔버스 생성 (더 작은 크기로 성능 향상)
       processingCanvasRef.current = document.createElement('canvas');
-      processingCanvasRef.current.width = 320;
-      processingCanvasRef.current.height = 240;
+      processingCanvasRef.current.width = 256;
+      processingCanvasRef.current.height = 192;
 
       // TensorFlow.js 백엔드 설정
       console.log('TensorFlow.js 백엔드 설정 중...');
@@ -40,7 +40,8 @@ const Popup: React.FC = () => {
       const model = handpose.SupportedModels.MediaPipeHands;
       const detectorConfig = {
         runtime: 'tfjs',
-        modelType: 'lite'
+        modelType: 'lite',
+        maxHands: 1 // 최대 1개 손만 감지 (성능 향상)
       } as handpose.MediaPipeHandsTfjsModelConfig;
 
       detectorRef.current = await handpose.createDetector(model, detectorConfig);
@@ -106,12 +107,25 @@ const Popup: React.FC = () => {
         processingCtx.clearRect(0, 0, processingCanvasRef.current.width, processingCanvasRef.current.height);
         processingCtx.drawImage(videoRef.current, 0, 0, processingCanvasRef.current.width, processingCanvasRef.current.height);
 
-        // TensorFlow.js 손 감지 실행
-        const hands = await detectorRef.current!.estimateHands(processingCanvasRef.current);
+        // TensorFlow.js 손 감지 실행 (타임아웃 설정)
+        const hands = await Promise.race([
+          detectorRef.current!.estimateHands(processingCanvasRef.current),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('손 감지 타임아웃')), 2000)
+          )
+        ]);
+
+        // 메모리 정리 (주기적으로 실행)
+        if (Math.random() < 0.1) { // 10% 확률로 메모리 정리
+          tf.disposeVariables();
+        }
+
         return hands;
       }
     } catch (err) {
       console.error('손 감지 에러:', err);
+      // 에러 발생 시 TensorFlow.js 메모리 정리
+      tf.disposeVariables();
     }
     return null;
   };
@@ -141,15 +155,15 @@ const Popup: React.FC = () => {
 
             // 빨간색 원으로 랜드마크 표시
             canvasCtx.beginPath();
-            canvasCtx.arc(canvasX, canvasY, 6, 0, 2 * Math.PI);
+            canvasCtx.arc(canvasX, canvasY, 3, 0, 2 * Math.PI);
             canvasCtx.fillStyle = '#FF0000';
             canvasCtx.fill();
 
             // 흰색 테두리
             canvasCtx.beginPath();
-            canvasCtx.arc(canvasX, canvasY, 6, 0, 2 * Math.PI);
+            canvasCtx.arc(canvasX, canvasY, 3, 0, 2 * Math.PI);
             canvasCtx.strokeStyle = '#FFFFFF';
-            canvasCtx.lineWidth = 2;
+            canvasCtx.lineWidth = 1;
             canvasCtx.stroke();
           }
 
@@ -162,15 +176,31 @@ const Popup: React.FC = () => {
 
   // 메인 루프 함수
   const detectHands = async () => {
-    // 1. TensorFlow.js로 손 감지
-    const hands = await detectHandsWithTensorFlow();
+    try {
+      // 1. TensorFlow.js로 손 감지
+      const hands = await detectHandsWithTensorFlow();
 
-    // 2. 결과를 렌더링
-    renderHandLandmarks(hands || []);
+      // 2. 결과를 렌더링
+      renderHandLandmarks(Array.isArray(hands) ? hands : []);
 
-    // 3. 다음 프레임 요청
-    if (isActiveRef.current) {
-      animationFrameRef.current = requestAnimationFrame(detectHands);
+      // 3. 다음 프레임 요청 (성능 최적화를 위해 약간의 지연 추가)
+      if (isActiveRef.current) {
+        setTimeout(() => {
+          if (isActiveRef.current) {
+            animationFrameRef.current = requestAnimationFrame(detectHands);
+          }
+        }, 100); // 100ms 지연 (약 10 FPS로 더 낮춤)
+      }
+    } catch (err) {
+      console.error('메인 루프 에러:', err);
+      // 에러 발생 시 잠시 대기 후 재시작
+      if (isActiveRef.current) {
+        setTimeout(() => {
+          if (isActiveRef.current) {
+            animationFrameRef.current = requestAnimationFrame(detectHands);
+          }
+        }, 1000);
+      }
     }
   };
 
