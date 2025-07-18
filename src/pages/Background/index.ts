@@ -61,6 +61,9 @@ function handleGestureAction(gesture: string) {
     }
 }
 
+// Content script 주입 상태를 추적하는 Map
+const injectedTabs = new Map<number, boolean>();
+
 function sendScrollMessage(actionType: string) {
     console.log("=== sendScrollMessage 시작 ===");
     console.log("Action type:", actionType);
@@ -73,42 +76,48 @@ function sendScrollMessage(actionType: string) {
             console.log("활성 탭 ID:", activeTabId);
 
             if (activeTabId !== undefined) {
-                console.log("메시지 전송 시도...");
-                
-                // 먼저 메시지 전송 시도 (Content script가 이미 로드되어 있을 경우)
-                chrome.tabs.sendMessage(activeTabId, { action: actionType }, (response) => {
-                    if (chrome.runtime.lastError) {
-                        console.log("Content script가 로드되지 않음, 주입 시도...");
-                        
-                        // Content script 주입 후 다시 메시지 전송
-                        chrome.scripting.executeScript({
-                            target: { tabId: activeTabId },
-                            files: ['contentScript.bundle.js']
-                        }).then((result) => {
-                            console.log("Content script 주입 성공:", result);
-                            
-                            // 주입 후 즉시 메시지 전송
-                            chrome.tabs.sendMessage(activeTabId, { action: actionType }, (response) => {
-                                if (chrome.runtime.lastError) {
-                                    console.error("메시지 전송 실패:", chrome.runtime.lastError.message);
-                                } else {
-                                    console.log("메시지 전송 성공:", response);
-                                }
-                            });
-                            
-                        }).catch((error) => {
-                            console.error("Content script 주입 실패:", error);
-                        });
-                    } else {
-                        console.log("메시지 전송 성공:", response);
-                    }
-                });
+                // 이미 주입된 탭인지 확인
+                if (injectedTabs.has(activeTabId)) {
+                    console.log("이미 Content script가 주입된 탭, 바로 메시지 전송");
+                    sendMessageToTab(activeTabId, actionType);
+                } else {
+                    console.log("Content script 주입이 필요한 탭");
+                    injectContentScript(activeTabId, actionType);
+                }
                 
             } else {
                 console.error("활성 탭 ID가 undefined입니다");
             }
         } else {
             console.error("활성 탭을 찾을 수 없습니다");
+        }
+    });
+}
+
+function injectContentScript(tabId: number, actionType: string) {
+    chrome.scripting.executeScript({
+        target: { tabId: tabId },
+        files: ['contentScript.bundle.js']
+    }).then((result) => {
+        console.log("Content script 주입 성공:", result);
+        injectedTabs.set(tabId, true);
+        
+        // 주입 후 즉시 메시지 전송
+        sendMessageToTab(tabId, actionType);
+        
+    }).catch((error) => {
+        console.error("Content script 주입 실패:", error);
+    });
+}
+
+function sendMessageToTab(tabId: number, actionType: string) {
+    chrome.tabs.sendMessage(tabId, { action: actionType }, (response) => {
+        if (chrome.runtime.lastError) {
+            console.error("메시지 전송 실패:", chrome.runtime.lastError.message);
+            // 메시지 전송 실패 시 주입 상태 제거 (다음에 다시 주입 시도)
+            injectedTabs.delete(tabId);
+        } else {
+            console.log("메시지 전송 성공:", response);
         }
     });
 }
@@ -124,9 +133,22 @@ chrome.runtime.onMessage.addListener((message, _sender, _sendResponse) => {
 });
 
 // 탭 로드 이벤트 리스너 추가
-chrome.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     if (changeInfo.status === 'complete' && tab.url) {
         console.log("Tab loaded:", tab.url);
+        // 탭이 새로고침되면 주입 상태 제거
+        if (injectedTabs.has(tabId)) {
+            console.log("탭 새로고침으로 인한 Content script 주입 상태 제거");
+            injectedTabs.delete(tabId);
+        }
+    }
+});
+
+// 탭 닫힘 이벤트 리스너 추가
+chrome.tabs.onRemoved.addListener((tabId) => {
+    if (injectedTabs.has(tabId)) {
+        console.log("탭 닫힘으로 인한 Content script 주입 상태 제거");
+        injectedTabs.delete(tabId);
     }
 });
 
