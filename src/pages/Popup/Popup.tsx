@@ -4,6 +4,9 @@ import { useCamera } from './hooks/useCamera';
 import { renderHandLandmarks } from './utils/handRenderer';
 import { CameraView } from './components/CameraView';
 import { ControlButton } from './components/ControlButton';
+import GestureDisplay from './components/GestureDisplay';
+import SensitivitySettings from './components/SensitivitySettings';
+import { GestureSettings, DEFAULT_GESTURE_SETTINGS } from './types/gestureSettings';
 import './Popup.css';
 
 const Popup: React.FC = () => {
@@ -22,8 +25,21 @@ const Popup: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // 제스처 설정 상태
+  const [gestureSettings, setGestureSettings] = useState<GestureSettings>(DEFAULT_GESTURE_SETTINGS);
+  const [showSettings, setShowSettings] = useState(false);
+
   // 커스텀 훅 사용
-  const { createHandDetector, detectHandsWithTensorFlow, disposeDetector, processingCanvasRef } = useHandDetection();
+  const {
+    createHandDetector,
+    detectHandsWithTensorFlow,
+    disposeDetector,
+    processingCanvasRef,
+    currentStaticGesture,
+    currentDynamicGesture,
+    gestureConfidence,
+    debugInfo
+  } = useHandDetection(gestureSettings);
   const { startCamera, stopCamera } = useCamera();
 
   // 메인 루프 함수
@@ -139,8 +155,26 @@ const Popup: React.FC = () => {
 
         {/* 웹캠 컨테이너 */}
         <div className="camera-container">
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', position: 'relative' }}>
             <CameraView videoRef={videoRef} canvasRef={canvasRef} />
+
+            {/* 제스처 표시 */}
+            {isActive && (
+              <GestureDisplay
+                staticGesture={currentStaticGesture}
+                dynamicGesture={currentDynamicGesture}
+                confidence={gestureConfidence}
+                debugInfo={debugInfo}
+              />
+            )}
+
+            {/* 민감도 설정 */}
+            <SensitivitySettings
+              settings={gestureSettings}
+              onSettingsChange={setGestureSettings}
+              isVisible={showSettings}
+              onToggle={() => setShowSettings(!showSettings)}
+            />
           </div>
 
           <div className="camera-controls">
