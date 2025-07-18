@@ -189,7 +189,7 @@ const Popup: React.FC = () => {
           if (isActiveRef.current) {
             animationFrameRef.current = requestAnimationFrame(detectHands);
           }
-        }, 100); // 100ms 지연 (약 10 FPS로 더 낮춤)
+        }, 50); // 50ms 지연 (약 20 FPS)
       }
     } catch (err) {
       console.error('메인 루프 에러:', err);
@@ -350,39 +350,38 @@ const Popup: React.FC = () => {
         {/* 웹캠 컨테이너 */}
         <div className="camera-container">
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
-            {/* 비디오 */}
-            <div>
-              <h4 style={{ margin: '0 0 5px 0', color: '#fff' }}>웹캠</h4>
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                style={{
-                  width: '320px',
-                  height: '240px',
-                  border: '2px solid #ccc',
-                  borderRadius: '8px',
-                  backgroundColor: '#000'
-                }}
-              />
-            </div>
-
-            {/* 캔버스 */}
+            {/* 비디오와 캔버스 오버레이 */}
             <div>
               <h4 style={{ margin: '0 0 5px 0', color: '#fff' }}>핸드 트래킹</h4>
-              <canvas
-                ref={canvasRef}
-                style={{
-                  width: '320px',
-                  height: '240px',
-                  border: '2px solid #00ff00',
-                  borderRadius: '8px',
-                  backgroundColor: '#000'
-                }}
-                width={320}
-                height={240}
-              />
+              <div style={{ position: 'relative', display: 'inline-block' }}>
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  style={{
+                    width: '320px',
+                    height: '240px',
+                    border: '2px solid #ccc',
+                    borderRadius: '8px',
+                    backgroundColor: '#000'
+                  }}
+                />
+                <canvas
+                  ref={canvasRef}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '320px',
+                    height: '240px',
+                    pointerEvents: 'none',
+                    zIndex: 10
+                  }}
+                  width={320}
+                  height={240}
+                />
+              </div>
             </div>
           </div>
 
