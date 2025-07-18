@@ -73,29 +73,35 @@ function sendScrollMessage(actionType: string) {
             console.log("활성 탭 ID:", activeTabId);
 
             if (activeTabId !== undefined) {
-                console.log("Content script 주입 시작...");
+                console.log("메시지 전송 시도...");
                 
-                // Content script 주입
-                chrome.scripting.executeScript({
-                    target: { tabId: activeTabId },
-                    files: ['contentScript.bundle.js']
-                }).then((result) => {
-                    console.log("Content script 주입 성공:", result);
-                    
-                    // 메시지 전송
-                    setTimeout(() => {
-                        console.log("메시지 전송 시작...");
-                        chrome.tabs.sendMessage(activeTabId, { action: actionType }, (response) => {
-                            if (chrome.runtime.lastError) {
-                                console.error("메시지 전송 실패:", chrome.runtime.lastError.message);
-                            } else {
-                                console.log("메시지 전송 성공:", response);
-                            }
+                // 먼저 메시지 전송 시도 (Content script가 이미 로드되어 있을 경우)
+                chrome.tabs.sendMessage(activeTabId, { action: actionType }, (response) => {
+                    if (chrome.runtime.lastError) {
+                        console.log("Content script가 로드되지 않음, 주입 시도...");
+                        
+                        // Content script 주입 후 다시 메시지 전송
+                        chrome.scripting.executeScript({
+                            target: { tabId: activeTabId },
+                            files: ['contentScript.bundle.js']
+                        }).then((result) => {
+                            console.log("Content script 주입 성공:", result);
+                            
+                            // 주입 후 즉시 메시지 전송
+                            chrome.tabs.sendMessage(activeTabId, { action: actionType }, (response) => {
+                                if (chrome.runtime.lastError) {
+                                    console.error("메시지 전송 실패:", chrome.runtime.lastError.message);
+                                } else {
+                                    console.log("메시지 전송 성공:", response);
+                                }
+                            });
+                            
+                        }).catch((error) => {
+                            console.error("Content script 주입 실패:", error);
                         });
-                    }, 1000);
-                    
-                }).catch((error) => {
-                    console.error("Content script 주입 실패:", error);
+                    } else {
+                        console.log("메시지 전송 성공:", response);
+                    }
                 });
                 
             } else {
@@ -125,8 +131,3 @@ chrome.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
 });
 
 console.log("Background script loaded successfully");
-
-setTimeout(() => {
-  console.log("테스트: scroll-up 제스처 실행");
-  handleGestureAction("scroll-up");
-}, 1000);
