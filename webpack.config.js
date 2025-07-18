@@ -1,13 +1,14 @@
-var webpack = require('webpack'),
-  path = require('path'),
-  fileSystem = require('fs-extra'),
-  env = require('./utils/env'),
-  CopyWebpackPlugin = require('copy-webpack-plugin'),
-  HtmlWebpackPlugin = require('html-webpack-plugin'),
-  TerserPlugin = require('terser-webpack-plugin');
-var { CleanWebpackPlugin } = require('clean-webpack-plugin');
-var ReactRefreshWebpackPlugin = require('@pmmmwh/react-refresh-webpack-plugin');
-var ReactRefreshTypeScript = require('react-refresh-typescript');
+const webpack = require('webpack');
+const path = require('path');
+const fileSystem = require('fs-extra');
+const env = require('./utils/env');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+const TerserPlugin = require('terser-webpack-plugin');
+const { CleanWebpackPlugin } = require('clean-webpack-plugin');
+const ReactRefreshWebpackPlugin = require('@pmmmwh/react-refresh-webpack-plugin');
+const ReactRefreshTypeScript = require('react-refresh-typescript');
+const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
 
 const ASSET_PATH = process.env.ASSET_PATH || '/';
 
@@ -142,10 +143,10 @@ var options = {
       patterns: [
         {
           from: 'src/manifest.json',
-          to: path.join(__dirname, 'build'),
+          to: path.join(__dirname, 'build', 'manifest.json'),
           force: true,
           transform: function (content, path) {
-            // generates the manifest file using the package.json informations
+            // 기존 manifest.json 변환 로직 유지
             return Buffer.from(
               JSON.stringify({
                 description: process.env.npm_package_description,
@@ -155,28 +156,16 @@ var options = {
             );
           },
         },
-      ],
-    }),
-    new CopyWebpackPlugin({
-      patterns: [
         {
-          from: 'src/pages/Content/content.styles.css',
-          to: path.join(__dirname, 'build'),
+          from: 'src/pages/Content/content.styles.css', // content script용 CSS 파일
+          to: path.join(__dirname, 'build', 'content.styles.css'), // build 폴더 최상위로 복사
           force: true,
         },
-      ],
-    }),
-    new CopyWebpackPlugin({
-      patterns: [
         {
           from: 'src/assets/img/icon-128.png',
           to: path.join(__dirname, 'build'),
           force: true,
         },
-      ],
-    }),
-    new CopyWebpackPlugin({
-      patterns: [
         {
           from: 'src/assets/img/icon-34.png',
           to: path.join(__dirname, 'build'),
@@ -214,6 +203,7 @@ var options = {
       chunks: ['panel'],
       cache: false,
     }),
+    // new BundleAnalyzerPlugin(), // 빌드 후 브라우저에서 번들 분석 리포트가 열림
   ].filter(Boolean),
   infrastructureLogging: {
     level: 'info',
