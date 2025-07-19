@@ -30,7 +30,7 @@
   },
   "include": [
     "src/**/*"
-  ],
+, "webpack.config.js"  ],
   "exclude": [
     "build",
     "node_modules",
