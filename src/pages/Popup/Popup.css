@@ -26,9 +26,47 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
+  justify-content: flex-start;
+  font-size: calc(10px + 1vmin);
   color: white;
+  padding: 10px;
+  overflow-y: auto;
+}
+
+.camera-container {
+  margin: 10px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.camera-controls {
+  display: flex;
+  gap: 5px;
+  margin-top: 5px;
+}
+
+.camera-controls button {
+  transition: all 0.3s ease;
+}
+
+.camera-controls button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.error-message {
+  color: #ff6b6b;
+  font-size: 11px;
+  margin: 5px;
+  padding: 8px;
+  background-color: rgba(255, 107, 107, 0.1);
+  border-radius: 4px;
+  border-left: 3px solid #ff6b6b;
+  white-space: pre-line;
+  text-align: left;
+  max-width: 300px;
 }
 
 .App-link {

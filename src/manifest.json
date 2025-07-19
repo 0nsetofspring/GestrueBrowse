@@ -2,6 +2,12 @@
   "manifest_version": 3,
   "name": "GestureExtension",
   "description": "A chrome hand tracking extension built with React 17, Webpack 5, and Webpack Dev Server 4",
+  "permissions": [
+    "camera"
+  ],
+  "host_permissions": [
+    "https://*/*"
+  ],
   "options_page": "options.html",
   "background": {
     "service_worker": "background.bundle.js",
@@ -69,5 +75,8 @@
       ],
       "matches": []
     }
-  ]
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+  }
 }
