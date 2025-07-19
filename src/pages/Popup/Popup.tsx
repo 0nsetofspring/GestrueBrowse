@@ -57,7 +57,7 @@ const Popup: React.FC = () => {
           if (isActiveRef.current) {
             animationFrameRef.current = requestAnimationFrame(detectHands);
           }
-        }, 50); // 50ms 지연 (약 20 FPS)
+        }, 20); // 50ms 지연 (약 20 FPS)
       }
     } catch (err) {
       console.error('메인 루프 에러:', err);
