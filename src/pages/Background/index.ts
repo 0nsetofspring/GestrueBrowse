@@ -5,7 +5,7 @@ console.log("Background script loading...");
 
 function handleGestureAction(gesture: string) {
     console.log("Handling gesture:", gesture);
-    
+
     // 인자로 받은 gesture(제스처 결과)에 따라 분기 처리.
     switch (gesture) {
         case "left":
@@ -19,6 +19,7 @@ function handleGestureAction(gesture: string) {
 
                     if (targetTab && targetTab.id !== undefined) {
                         chrome.tabs.update(targetTab.id, { active: true });
+                        console.log("✅ 이전 탭으로 이동 완료");
                     } else {
                         console.error("이전 탭의 ID를 찾을 수 없습니다.");
                     }
@@ -39,6 +40,7 @@ function handleGestureAction(gesture: string) {
 
                     if (targetTab && targetTab.id !== undefined) {
                         chrome.tabs.update(targetTab.id, { active: true });
+                        console.log("✅ 다음 탭으로 이동 완료");
                     } else {
                         console.error("다음 탭의 ID를 찾을 수 없습니다.");
                     }
@@ -56,6 +58,16 @@ function handleGestureAction(gesture: string) {
             console.log("=== SCROLL DOWN 제스처 감지 ===");
             sendScrollMessage("scroll-down");
             break;
+        case "stop":
+            console.log("=== STOP 제스처 감지 ===");
+            // 현재 활성 탭에서 페이지 새로고침
+            chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+                if (tabs.length > 0 && tabs[0] && tabs[0].id) {
+                    chrome.tabs.reload(tabs[0].id);
+                    console.log("✅ 페이지 새로고침 완료");
+                }
+            });
+            break;
         default:
             console.log("알 수 없는 제스처:", gesture);
     }
@@ -70,7 +82,7 @@ function sendScrollMessage(actionType: string) {
 
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         console.log("탭 조회 결과:", tabs);
-        
+
         if (tabs.length > 0 && tabs[0] !== undefined) {
             const activeTabId = tabs[0].id;
             console.log("활성 탭 ID:", activeTabId);
@@ -84,7 +96,7 @@ function sendScrollMessage(actionType: string) {
                     console.log("Content script 주입이 필요한 탭");
                     injectContentScript(activeTabId, actionType);
                 }
-                
+
             } else {
                 console.error("활성 탭 ID가 undefined입니다");
             }
@@ -101,10 +113,10 @@ function injectContentScript(tabId: number, actionType: string) {
     }).then((result) => {
         console.log("Content script 주입 성공:", result);
         injectedTabs.set(tabId, true);
-        
+
         // 주입 후 즉시 메시지 전송
         sendMessageToTab(tabId, actionType);
-        
+
     }).catch((error) => {
         console.error("Content script 주입 실패:", error);
     });
@@ -125,7 +137,7 @@ function sendMessageToTab(tabId: number, actionType: string) {
 // 메시지 리스너: content script 또는 popup에서 제스처 결과를 받음
 chrome.runtime.onMessage.addListener((message, _sender, _sendResponse) => {
     console.log("Background script received message:", message);
-    
+
     if (message.type === "gesture") {
         console.log("Processing gesture:", message.gesture);
         handleGestureAction(message.gesture);
@@ -155,18 +167,18 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 // 탭 활성화 이벤트 리스너 추가 (Extension 상태 유지)
 chrome.tabs.onActivated.addListener((activeInfo) => {
     console.log("탭 활성화됨:", activeInfo.tabId);
-    
+
     // 활성화된 탭의 정보 가져오기
     chrome.tabs.get(activeInfo.tabId, (tab) => {
         if (chrome.runtime.lastError) {
             console.error("탭 정보 가져오기 실패:", chrome.runtime.lastError.message);
             return;
         }
-        
+
         // 일반 웹사이트인 경우에만 Content script 자동 주입
         if (tab.url && !tab.url.startsWith('chrome://') && !tab.url.startsWith('chrome-extension://')) {
             console.log("활성화된 탭에 Content script 자동 주입 시도:", tab.url);
-            
+
             // 이미 주입되어 있지 않은 경우에만 주입
             if (!injectedTabs.has(activeInfo.tabId)) {
                 chrome.scripting.executeScript({
@@ -194,7 +206,7 @@ chrome.runtime.onInstalled.addListener(() => {
 // 키보드 단축키 처리
 chrome.commands.onCommand.addListener((command) => {
     console.log("키보드 단축키 실행:", command);
-    
+
     switch (command) {
         case "scroll-up":
             handleGestureAction("scroll-up");
