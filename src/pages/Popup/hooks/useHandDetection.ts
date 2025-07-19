@@ -98,7 +98,7 @@ export const useHandDetection = (settings: GestureSettings = DEFAULT_GESTURE_SET
   const gestureStartTimeRef = useRef<number | null>(null);
   const currentGestureRef = useRef<string | null>(null);
   const [gestureHoldProgress, setGestureHoldProgress] = useState<number>(0); // 0~1 사이 값
-  const GESTURE_HOLD_DURATION = 500; // 0.5초
+  const GESTURE_HOLD_DURATION = 300; // 0.5초에서 0.3초로 줄임
 
   // 제스처 지속 시간 체크 및 액션 실행
   const checkGestureHoldAndExecute = useCallback((gestureKey: string, action: string) => {
@@ -109,7 +109,7 @@ export const useHandDetection = (settings: GestureSettings = DEFAULT_GESTURE_SET
       gestureStartTimeRef.current = now;
       currentGestureRef.current = gestureKey;
       setGestureHoldProgress(0);
-      console.log('🔄 새로운 제스처 시작:', gestureKey);
+      console.log('🔄 새로운 제스처 시작:', gestureKey, '액션:', action);
     }
 
     // 지속 시간 계산
@@ -118,9 +118,9 @@ export const useHandDetection = (settings: GestureSettings = DEFAULT_GESTURE_SET
       const progress = Math.min(elapsed / GESTURE_HOLD_DURATION, 1);
       setGestureHoldProgress(progress);
 
-      // 0.5초 지속되면 액션 실행
+      // 0.3초 지속되면 액션 실행
       if (elapsed >= GESTURE_HOLD_DURATION && action !== lastSentActionRef.current) {
-        console.log('✅ 제스처 0.5초 유지 완료, 액션 실행:', action);
+        console.log('✅ 제스처 0.3초 유지 완료, 액션 실행:', action);
         sendGestureToBackground(action);
         lastSentActionRef.current = action;
         setCurrentAction(action);
@@ -136,7 +136,7 @@ export const useHandDetection = (settings: GestureSettings = DEFAULT_GESTURE_SET
     }
   }, []);
 
-  // 제스처가 변경되거나 없어지면 초기화
+  // 제스처가 변경되거나 없어지면 초기화 (더 관대하게)
   const resetGestureHold = useCallback(() => {
     if (currentGestureRef.current) {
       console.log('🔄 제스처 초기화');
@@ -301,13 +301,33 @@ export const useHandDetection = (settings: GestureSettings = DEFAULT_GESTURE_SET
             setCurrentDynamicGesture(recognizedDynamicGesture);
           }
 
-          // 🔥 제스처 액션 처리 및 브라우저 제어 (2초 지속 시스템)
+          console.log('staticGesture', staticGesture);
+          console.log('recognizedDynamicGesture', recognizedDynamicGesture);
+
+          // 제스처 액션 처리 및 브라우저 제어
           const currentAction = mapGestureToAction(staticGesture, recognizedDynamicGesture);
 
           if (currentAction && !isGestureOnCooldown) {
-            // 제스처 키 생성 (정적+동적 조합)
-            const gestureKey = `${staticGesture}-${recognizedDynamicGesture}`;
-            checkGestureHoldAndExecute(gestureKey, currentAction);
+            // 동적 제스처가 있는 경우에만 지속 시간 체크
+            if (recognizedDynamicGesture !== DynamicGesture.NONE) {
+              const gestureKey = `${staticGesture}-${recognizedDynamicGesture}`;
+              console.log('🔍 동적 제스처 액션 매핑:', { staticGesture, recognizedDynamicGesture, action: currentAction });
+              checkGestureHoldAndExecute(gestureKey, currentAction);
+            } else {
+              // 정적 제스처만 있는 경우 즉시 실행
+              console.log('🔍 정적 제스처 즉시 실행:', { staticGesture, action: currentAction });
+              sendGestureToBackground(currentAction);
+              lastSentActionRef.current = currentAction;
+              setCurrentAction(currentAction);
+              
+              // 쿨다운 시작
+              setIsGestureOnCooldown(true);
+              cooldownTimerRef.current = setTimeout(() => {
+                setIsGestureOnCooldown(false);
+                gestureHistoryRef.current.clearDynamicGestures();
+                console.log('쿨다운 종료. 다음 제스처 인식 가능.');
+              }, 1000);
+            }
           } else if (!currentAction) {
             // 제스처가 없어지면 초기화
             resetGestureHold();
