@@ -11,13 +11,17 @@ interface GestureDisplayProps {
     movementThreshold?: number;
     recentGestures?: DynamicGesture[];
   };
+  currentAction?: string | null; // 추가: 현재 실행 중인 액션
+  gestureHoldProgress?: number; // 추가: 제스처 지속 시간 진행률 (0~1)
 }
 
 const GestureDisplay: React.FC<GestureDisplayProps> = ({
   staticGesture,
   dynamicGesture,
   confidence,
-  debugInfo
+  debugInfo,
+  currentAction,
+  gestureHoldProgress = 0
 }) => {
   // 제스처에 따른 색상과 아이콘 결정
   const getGestureColor = (gesture: StaticGesture | DynamicGesture) => {
@@ -57,23 +61,58 @@ const GestureDisplay: React.FC<GestureDisplayProps> = ({
       case StaticGesture.STOP:
         return '정지';
       case StaticGesture.LEFT:
-        return '오른쪽';
-      case StaticGesture.RIGHT:
         return '왼쪽';
+      case StaticGesture.RIGHT:
+        return '오른쪽';
       case StaticGesture.UP:
         return '위쪽';
       case StaticGesture.DOWN:
         return '아래쪽';
       case DynamicGesture.SWIPE_LEFT:
-        return '오른쪽 스와이프';
-      case DynamicGesture.SWIPE_RIGHT:
         return '왼쪽 스와이프';
+      case DynamicGesture.SWIPE_RIGHT:
+        return '오른쪽 스와이프';
       case DynamicGesture.SWIPE_UP:
         return '위쪽 스와이프';
       case DynamicGesture.SWIPE_DOWN:
         return '아래쪽 스와이프';
       default:
         return '인식 안됨';
+    }
+  };
+
+  // 액션에 따른 텍스트와 아이콘
+  const getActionText = (action: string) => {
+    switch (action) {
+      case 'scroll-up':
+        return '스크롤 위로';
+      case 'scroll-down':
+        return '스크롤 아래로';
+      case 'left':
+        return '이전 탭';
+      case 'right':
+        return '다음 탭';
+      case 'stop':
+        return '페이지 새로고침';
+      default:
+        return action;
+    }
+  };
+
+  const getActionIcon = (action: string) => {
+    switch (action) {
+      case 'scroll-up':
+        return '⬆️';
+      case 'scroll-down':
+        return '⬇️';
+      case 'left':
+        return '◀️';
+      case 'right':
+        return '▶️';
+      case 'stop':
+        return '🔄';
+      default:
+        return '⚡';
     }
   };
 
@@ -91,6 +130,65 @@ const GestureDisplay: React.FC<GestureDisplayProps> = ({
       zIndex: 1000,
       minWidth: '120px'
     }}>
+      {/* 현재 실행 중인 액션 표시 */}
+      {currentAction && (
+        <div style={{
+          marginBottom: '8px',
+          padding: '6px',
+          background: 'rgba(76, 175, 80, 0.3)',
+          borderRadius: '4px',
+          border: '1px solid #4CAF50'
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            color: '#4CAF50',
+            fontWeight: 'bold'
+          }}>
+            <span style={{ fontSize: '14px' }}>{getActionIcon(currentAction)}</span>
+            <span>실행: {getActionText(currentAction)}</span>
+          </div>
+        </div>
+      )}
+
+      {/* 제스처 지속 시간 진행률 표시 */}
+      {gestureHoldProgress > 0 && gestureHoldProgress < 1 && (
+        <div style={{
+          marginBottom: '8px',
+          padding: '6px',
+          background: 'rgba(255, 193, 7, 0.2)',
+          borderRadius: '4px',
+          border: '1px solid #FFC107'
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            color: '#FFC107',
+            fontSize: '11px'
+          }}>
+            <span>⏱️</span>
+            <span>제스처 유지 중: {Math.round(gestureHoldProgress * 100)}%</span>
+          </div>
+          <div style={{
+            width: '100%',
+            height: '3px',
+            background: '#333',
+            borderRadius: '2px',
+            marginTop: '4px',
+            overflow: 'hidden'
+          }}>
+            <div style={{
+              width: `${gestureHoldProgress * 100}%`,
+              height: '100%',
+              background: '#FFC107',
+              transition: 'width 0.1s ease'
+            }} />
+          </div>
+        </div>
+      )}
+
       <div style={{ marginBottom: '8px' }}>
         <div style={{
           display: 'flex',

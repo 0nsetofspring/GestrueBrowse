@@ -38,7 +38,8 @@ const Popup: React.FC = () => {
     currentStaticGesture,
     currentDynamicGesture,
     gestureConfidence,
-    debugInfo
+    debugInfo,
+    currentAction
   } = useHandDetection(gestureSettings);
   const { startCamera, stopCamera } = useCamera();
 
@@ -165,6 +166,7 @@ const Popup: React.FC = () => {
                 dynamicGesture={currentDynamicGesture}
                 confidence={gestureConfidence}
                 debugInfo={debugInfo}
+                currentAction={currentAction}
               />
             )}
 
