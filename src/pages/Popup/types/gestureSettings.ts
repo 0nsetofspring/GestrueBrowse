@@ -22,14 +22,14 @@ export interface GestureSettings {
 // 기본 민감도 설정
 export const DEFAULT_GESTURE_SETTINGS: GestureSettings = {
   static: {
-    fingerThreshold: 0.02,
-    directionThreshold: 0.08,
-    maxExtendedFingers: 2,
+    fingerThreshold: 0.13,
+    directionThreshold: 0.03,
+    maxExtendedFingers: 5,
   },
   dynamic: {
-    movementThreshold: 0.05, // 더 관대하게 조정
-    minFrames: 3, // 더 관대하게 조정
-    minConsistentFrames: 2, // 더 관대하게 조정
+    movementThreshold: 0.1, // 더 관대하게 조정
+    minFrames: 7, // 더 관대하게 조정
+    minConsistentFrames: 3, // 더 관대하게 조정
   },
   general: {
     historyLength: 15,

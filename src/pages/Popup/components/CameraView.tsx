@@ -20,7 +20,8 @@ export const CameraView: React.FC<CameraViewProps> = ({ videoRef, canvasRef }) =
             height: '240px',
             border: '2px solid #ccc',
             borderRadius: '8px',
-            backgroundColor: '#000'
+            backgroundColor: '#000',
+            transform: 'scaleX(-1)'
           }}
         />
         <canvas

@@ -1,7 +1,7 @@
 export const drawHandConnections = (
-  ctx: CanvasRenderingContext2D, 
-  keypoints: any[], 
-  processingCanvas: HTMLCanvasElement, 
+  ctx: CanvasRenderingContext2D,
+  keypoints: any[],
+  processingCanvas: HTMLCanvasElement,
   displayCanvas: HTMLCanvasElement
 ) => {
   // 손가락 연결선 정의 (MediaPipe Hands 21개 랜드마크 기준)
@@ -40,8 +40,8 @@ export const drawHandConnections = (
 };
 
 export const renderHandLandmarks = (
-  hands: any[], 
-  canvasRef: React.RefObject<HTMLCanvasElement>, 
+  hands: any[],
+  canvasRef: React.RefObject<HTMLCanvasElement>,
   processingCanvasRef: React.RefObject<HTMLCanvasElement>
 ) => {
   if (!canvasRef.current || !processingCanvasRef.current) {
@@ -55,6 +55,12 @@ export const renderHandLandmarks = (
 
   // 캔버스 초기화
   canvasCtx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+
+  // 좌우반전(미러링) 적용
+  canvasCtx.save();
+  canvasCtx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+  canvasCtx.translate(canvasRef.current.width, 0);
+  canvasCtx.scale(-1, 1);
 
   // 손이 감지된 경우 랜드마크 그리기
   if (hands && hands.length > 0) {
@@ -84,4 +90,5 @@ export const renderHandLandmarks = (
       }
     }
   }
+  canvasCtx.restore();
 }; 

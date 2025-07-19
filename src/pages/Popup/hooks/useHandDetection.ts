@@ -29,12 +29,16 @@ export const useHandDetection = (settings: GestureSettings = DEFAULT_GESTURE_SET
   const processingCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const detectorRef = useRef<handpose.HandDetector | null>(null);
   const gestureHistoryRef = useRef<GestureHistory>(new GestureHistory(settings.general.historyLength));
-  
+
   // 제스처 상태
   const [currentStaticGesture, setCurrentStaticGesture] = useState<StaticGesture>(StaticGesture.NONE);
   const [currentDynamicGesture, setCurrentDynamicGesture] = useState<DynamicGesture>(DynamicGesture.NONE);
   const [gestureConfidence, setGestureConfidence] = useState<number>(0);
   const [debugInfo, setDebugInfo] = useState<any>(null);
+
+  // 쿨다운 상태와 타이머를 위한 ref
+  const [isGestureOnCooldown, setIsGestureOnCooldown] = useState(false);
+  const cooldownTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const createHandDetector = useCallback(async () => {
     try {
@@ -97,18 +101,53 @@ export const useHandDetection = (settings: GestureSettings = DEFAULT_GESTURE_SET
         if (hands && Array.isArray(hands) && hands.length > 0) {
           const hand = hands[0] as any;
           const landmarks = hand.keypoints?.map((point: any) => ({ x: point.x, y: point.y })) || [];
-          
+
           // 제스처 히스토리에 랜드마크 추가
           gestureHistoryRef.current.addLandmarks(landmarks);
-          
+
           // 정적 제스처 인식
           const staticGesture = recognizeStaticGesture(landmarks, settings);
           gestureHistoryRef.current.addStaticGesture(staticGesture);
-          
+
           // 동적 제스처 인식
           const previousLandmarks = gestureHistoryRef.current.getPreviousLandmarks();
-          const recentDynamicGestures = gestureHistoryRef.current.getRecentDynamicGestures();
-          
+          // const recentDynamicGestures = gestureHistoryRef.current.getRecentDynamicGestures();
+          // 1. 현재 프레임의 '잠재적' 제스처를 가져옵니다.
+          const potentialGesture = previousLandmarks
+            ? recognizeDynamicGesture(landmarks, previousLandmarks, settings)
+            : DynamicGesture.NONE;
+
+          // 2. 히스토리에 추가
+          gestureHistoryRef.current.addDynamicGesture(potentialGesture);
+
+          // 3. 히스토리를 확인하여 제스처를 '확정'
+          let recognizedDynamicGesture = DynamicGesture.NONE;
+
+          if (!isGestureOnCooldown && potentialGesture !== DynamicGesture.NONE) {
+            const recentHistory = gestureHistoryRef.current.getRecentDynamicGestures(settings.dynamic.minFrames);
+
+            if (recentHistory.length >= settings.dynamic.minFrames) {
+              const consistentCount = recentHistory.filter(g => g === potentialGesture).length;
+
+              // minConsistentFrames 기준으로 일관성 검사
+              if (consistentCount >= settings.dynamic.minConsistentFrames) {
+                recognizedDynamicGesture = potentialGesture;
+
+                console.log('✅ 동적 제스처 최종 감지:', recognizedDynamicGesture);
+
+                // 쿨다운 시작
+                setIsGestureOnCooldown(true);
+                cooldownTimerRef.current = setTimeout(() => {
+                  setIsGestureOnCooldown(false);
+                  gestureHistoryRef.current.clearDynamicGestures();
+                  console.log('쿨다운 종료. 다음 제스처 인식 가능.');
+                }, 1000); // 0.5초 쿨다운 (원하는 시간으로 조절)
+              }
+            }
+          }
+
+          // recognizedDynamicGesture를 상태로 저장하거나, UI에 표시, 메시지 전송 등 원하는 곳에 활용
+
           // 디버깅 정보 수집
           let debugData = null;
           if (previousLandmarks) {
@@ -116,21 +155,22 @@ export const useHandDetection = (settings: GestureSettings = DEFAULT_GESTURE_SET
             const prevWrist = previousLandmarks[LANDMARK_INDICES.WRIST];
             const middleFingerMcp = landmarks[LANDMARK_INDICES.MIDDLE_MCP];
             const prevMiddleFingerMcp = previousLandmarks[LANDMARK_INDICES.MIDDLE_MCP];
-            
+
             const deltaX = (wrist.x + middleFingerMcp.x) / 2 - (prevWrist.x + prevMiddleFingerMcp.x) / 2;
             const deltaY = (wrist.y + middleFingerMcp.y) / 2 - (prevWrist.y + prevMiddleFingerMcp.y) / 2;
-            
+
+            const currentRecentHistory = gestureHistoryRef.current.getRecentDynamicGestures();
+
             debugData = {
               deltaX,
               deltaY,
               movementThreshold: settings.dynamic.movementThreshold,
-              recentGestures: recentDynamicGestures
+              recentGestures: currentRecentHistory
             };
-            
+
             console.log('동적 제스처 분석:', {
-              currentLandmarks: landmarks.length,
-              previousLandmarks: previousLandmarks.length,
-              recentDynamicGestures: recentDynamicGestures.length,
+              potential: potentialGesture,
+              recognized: recognizedDynamicGesture,
               deltaX: deltaX.toFixed(4),
               deltaY: deltaY.toFixed(4),
               settings: {
@@ -140,27 +180,24 @@ export const useHandDetection = (settings: GestureSettings = DEFAULT_GESTURE_SET
               }
             });
           }
-          
-          const dynamicGesture = previousLandmarks 
-            ? recognizeDynamicGesture(landmarks, previousLandmarks, recentDynamicGestures, settings)
-            : DynamicGesture.NONE;
-          gestureHistoryRef.current.addDynamicGesture(dynamicGesture);
-          
+
           // 동적 제스처 결과 로그
-          if (dynamicGesture !== DynamicGesture.NONE) {
-            console.log('동적 제스처 감지:', dynamicGesture);
+          if (recognizedDynamicGesture !== DynamicGesture.NONE) {
+            console.log('동적 제스처 감지:', recognizedDynamicGesture);
           }
-          
+
           // 디버그 정보 업데이트
           setDebugInfo(debugData);
-          
+
           // 제스처 상태 업데이트
           setCurrentStaticGesture(staticGesture);
-          setCurrentDynamicGesture(dynamicGesture);
-          
+          if (recognizedDynamicGesture !== DynamicGesture.NONE) {
+            setCurrentDynamicGesture(recognizedDynamicGesture);
+          }
+
           // 제스처 신뢰도 계산 (최근 제스처들의 일관성) - 더 안정적으로
           const recentStaticGestures = gestureHistoryRef.current.getRecentStaticGestures(settings.general.confidenceFrames);
-          const confidence = recentStaticGestures.length > 0 
+          const confidence = recentStaticGestures.length > 0
             ? recentStaticGestures.filter(g => g === staticGesture).length / recentStaticGestures.length
             : 0;
           setGestureConfidence(confidence);
@@ -184,6 +221,15 @@ export const useHandDetection = (settings: GestureSettings = DEFAULT_GESTURE_SET
       tf.disposeVariables();
     }
     return null;
+  }, [isGestureOnCooldown, settings]);
+
+  // 컴포넌트 언마운트 시 타이머 정리
+  useEffect(() => {
+    return () => {
+      if (cooldownTimerRef.current) {
+        clearTimeout(cooldownTimerRef.current);
+      }
+    };
   }, []);
 
   const disposeDetector = useCallback(() => {
@@ -201,14 +247,14 @@ export const useHandDetection = (settings: GestureSettings = DEFAULT_GESTURE_SET
     setGestureConfidence(0);
   }, []);
 
-      return {
-      createHandDetector,
-      detectHandsWithTensorFlow,
-      disposeDetector,
-      processingCanvasRef,
-      currentStaticGesture,
-      currentDynamicGesture,
-      gestureConfidence,
-      debugInfo
-    };
+  return {
+    createHandDetector,
+    detectHandsWithTensorFlow,
+    disposeDetector,
+    processingCanvasRef,
+    currentStaticGesture,
+    currentDynamicGesture,
+    gestureConfidence,
+    debugInfo
+  };
 }; 

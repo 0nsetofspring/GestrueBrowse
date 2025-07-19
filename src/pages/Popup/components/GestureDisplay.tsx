@@ -32,9 +32,9 @@ const GestureDisplay: React.FC<GestureDisplayProps> = ({
       case StaticGesture.STOP:
         return '✋';
       case StaticGesture.LEFT:
-        return '👈';
-      case StaticGesture.RIGHT:
         return '👉';
+      case StaticGesture.RIGHT:
+        return '👈';
       case StaticGesture.UP:
         return '👆';
       case StaticGesture.DOWN:
@@ -57,17 +57,17 @@ const GestureDisplay: React.FC<GestureDisplayProps> = ({
       case StaticGesture.STOP:
         return '정지';
       case StaticGesture.LEFT:
-        return '왼쪽';
-      case StaticGesture.RIGHT:
         return '오른쪽';
+      case StaticGesture.RIGHT:
+        return '왼쪽';
       case StaticGesture.UP:
         return '위쪽';
       case StaticGesture.DOWN:
         return '아래쪽';
       case DynamicGesture.SWIPE_LEFT:
-        return '왼쪽 스와이프';
-      case DynamicGesture.SWIPE_RIGHT:
         return '오른쪽 스와이프';
+      case DynamicGesture.SWIPE_RIGHT:
+        return '왼쪽 스와이프';
       case DynamicGesture.SWIPE_UP:
         return '위쪽 스와이프';
       case DynamicGesture.SWIPE_DOWN:
